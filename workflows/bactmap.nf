@@ -70,6 +70,7 @@ include { BWA_INDEX } from '../modules/nf-core/software/bwa/index/main' addParam
 include { BWA_MEM   } from '../modules/nf-core/software/bwa/mem/main'   addParams( options: modules['bwa_mem'] )
 include { GUBBINS   } from '../modules/nf-core/software/gubbins/main'   addParams( options: modules['gubbins'] )
 include { SNPSITES  } from '../modules/nf-core/software/snpsites/main'  addParams( options: modules['snpsites'] )
+include { SAMSTATS  } from '../modules/nf-core/software/samtools/stats/main' addParams( options: modules['samtools_stats'])
 
 /*
 ========================================================================================
@@ -134,6 +135,14 @@ workflow BACTMAP {
         BWA_MEM.out.bam
     )
     ch_software_versions = ch_software_versions.mix(BAM_SORT_SAMTOOLS.out.samtools_version.first().ifEmpty(null))
+
+    //
+    // MODULE: Get samtools bam stats 
+    //
+    SAMSTATS (
+        BAM_SORT_SAMTOOLS.out.bam.join(BAM_SORT_SAMTOOLS.out.bai, by: [0])
+    )
+    ch_software_versions = ch_software_versions.mix(SAMSTATS.out.samtools_version.first().ifEmpty(null))
 
     //
     // SUBWORKFLOW: Call variants
@@ -229,7 +238,8 @@ workflow BACTMAP {
             ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'),
             FASTP.out.json.collect{it[1]}.ifEmpty([]),
             BAM_SORT_SAMTOOLS.out.stats.collect{it[1]}.ifEmpty([]),
-            VARIANTS_BCFTOOLS.out.stats.collect{it[1]}.ifEmpty([])
+            VARIANTS_BCFTOOLS.out.stats.collect{it[1]}.ifEmpty([]),
+            SAMSTATS.out.stats.collect{it[1]}.ifEmpty([])
         )
         multiqc_report = MULTIQC.out.report.toList()
 }
